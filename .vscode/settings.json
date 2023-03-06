@@ -17,5 +17,10 @@
         }
     },
     "cmake.buildBeforeRun": true,
-    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "files.associations": {
+        "tuner.h": "c",
+        "gui_paint.h": "c"
+    },
+    "cortex-debug.variableUseNaturalFormat": false
 }

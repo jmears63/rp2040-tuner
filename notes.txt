@@ -1,0 +1,18 @@
+TODO:
+
+Resolder the wires with heat shrink sleaving.
+
+FIFO setup (data sheet chapter 8):
+    Disable all sensors.
+    Enable using FIFO_CTRL register, including HWM so that INT2 is generated.
+    Enable accelerometer.
+    To read:
+        CTRL9: send command 0x0D; This automatically sets FIFO_rd_mode bit to 1 in FIFO_CTRL.
+        Read from FIFO_DATA (XL, XH, YL, YH, ZL, ZH, etc).
+        Clear FIFO_rd_mode bit in FIFO_CTRL.
+
+Beware register auto increment when reading data from the FIFO.
+
+Result FIFO via ctrl 9 before we start.
+Is the command to read FIFO actually correct? 5 or D?
+Do we need to reset interrupts in the ARM? In PIO?
