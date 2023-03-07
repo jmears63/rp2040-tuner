@@ -20,7 +20,8 @@
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "files.associations": {
         "tuner.h": "c",
-        "gui_paint.h": "c"
+        "gui_paint.h": "c",
+        "qmi8658.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": false
 }
