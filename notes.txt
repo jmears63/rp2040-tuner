@@ -1,10 +1,16 @@
 TODO:
-    Code tidy.
-    Map the data read into x/y/z array.
 
 
-FIFO data transfer:
-    The FIFO chip behaves more like a QMI865A (rather than a C), documented here:
-        https://www.qstcorp.com/upload/pdf/202301/13-52-25%20QMI8658A%20Datasheet%20Rev%20A.pdf
-    The protocol for reading FIFO data is somewhat different.
+From the IMU data sheet, I think X is axis we are interested in for side to side motions.
 
+Core 0:
+Spool the raw X data into a circular buffer.
+Run a LPF on that filter.
+When it crosses zero, send a message to core 1.
+
+Core 1:
+Initialize tables of 0/1 strobe bands. Initially just one table.
+Start a timer.
+Calculate phase based on the timer and reference pitch.
+Read the strobe bands based on that phase, copying them into a display buffer.
+Throw the display buffer at the LCD.

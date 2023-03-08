@@ -19,7 +19,7 @@ include_directories(./lib/LCD)
 include_directories(./lib/QMI8658)
 
 add_executable(tuner
-  tuner.c imu.c
+  tuner.c imu.c core1_main.c
 )
 
 # pico_enable_stdio_usb(tuner 1)
@@ -27,4 +27,4 @@ pico_enable_stdio_uart(tuner 1)
 
 pico_add_extra_outputs(tuner)
 
-target_link_libraries(tuner LCD QMI8658 GUI Fonts Config pico_stdlib hardware_spi hardware_i2c)
+target_link_libraries(tuner LCD QMI8658 GUI Fonts Config pico_stdlib hardware_spi hardware_i2c pico_multicore)
