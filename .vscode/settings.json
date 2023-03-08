@@ -23,5 +23,5 @@
         "gui_paint.h": "c",
         "qmi8658.h": "c"
     },
-    "cortex-debug.variableUseNaturalFormat": false
+    "cortex-debug.variableUseNaturalFormat": true
 }

@@ -1,4 +1,6 @@
 TODO:
+    Code tidy.
+    Map the data read into x/y/z array.
 
 
 FIFO data transfer:

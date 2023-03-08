@@ -58,7 +58,7 @@ enum QMI8658Register
     QMI8658Register_Ctrl9, // 10
     /*! \brief Calibration register 1 most significant byte. */
     QMI8658Register_Cal1_L = 11,
-    /*! \brief Calibration register 1 least significant byte. */
+    /*! \brief #iCalibration register 1 least significant byte. */
     QMI8658Register_Cal1_H,
     /*! \brief Calibration register 2 most significant byte. */
     QMI8658Register_Cal2_L,
