@@ -14,3 +14,7 @@ Start a timer.
 Calculate phase based on the timer and reference pitch.
 Read the strobe bands based on that phase, copying them into a display buffer.
 Throw the display buffer at the LCD.
+
+
+https://www.dsprelated.com/freebooks/filters/Biquad_Software_Implementations.html
+

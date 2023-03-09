@@ -1,4 +1,5 @@
 #include "imu.h"
+#include "biquad.h"
 
 /*
     IMPORTANT
@@ -25,7 +26,9 @@ enum FIFO_REGISTERS {
 
 #define FIFO_HIGH_WATER_THRESHOLD 16        // The FIFO High Water Threshold in ODRs (so per 3 WORDs or xyz_sample structs).
 #define FIFO_CTRL_VALUE 0x0D                // 0000 1101:  FIFO mode, 128 samples (3 WORDS each, xyz_sample) total FIFO size.
-#define FIFO_MAX_SAMPLES 128                // Must match previous definition, if you change one value, change the other too.
+#define FIFO_MAX_SAMPLES 256                // Maximum FIFO length based on the data sheet.
+
+#define RAW_SAMPLE_RATE_HZ 1000
 
 static volatile imu_commands pending_imu_command = NO_COMMAND;
 
@@ -39,7 +42,29 @@ static void imu_int2_handler()
     imu_command(CTRL_CMD_REQ_FIFO);
 }
 
-static xyz_sample data_buf[FIFO_MAX_SAMPLES];
+static xyz_sample raw_data_buf[FIFO_MAX_SAMPLES];
+
+
+#define BIQUAD_STAGES 1
+static arm_biquad_casd_df1_inst_q15 lpf_instance;       // Low pass filter biquad instance.
+static q15_t lpf_state[BIQUAD_STAGES * 4];
+#define SCALING 1.4                                     // Adjust this value to accommodate the largest coefficient below.
+#define NORMALIZED(v) (v * 0x7FFF / SCALING)            // Scale v to a q15_t
+static const q15_t lpf_coefficients[] =
+{
+    // https://www.earlevel.com/main/2021/09/02/biquad-calculator-v3/
+    // CMSIS b10, 0, b11, b12, a11, a12. From the calculator above, swap A and B, and change the signs of the resulting As.
+    // 1000 Hz sample rate, 70Hz cutoff, Q=0.7071.
+    NORMALIZED(0.036574754677828704),
+    0,
+    NORMALIZED(0.07314950935565741),
+    NORMALIZED(0.036574754677828704),
+    NORMALIZED(1.3908921947801067),
+    NORMALIZED(-0.5371912134914214)
+};
+
+
+static void process_data(int aceel_samples);
 
 /**
  * This handles INT1 events, which indicates one of two things:
@@ -59,6 +84,7 @@ static void imu_int1_handler()
 
             // This is the sample count in WORDs:
             uint16_t sample_count_words = (uint16_t) sample_count_ls + (((uint16_t) (fifo_status & 0x03)) << 8);
+            sample_count_words = MIN(FIFO_MAX_SAMPLES, sample_count_words);
 
             // Out of curiosity, see if the FIFO_rd_mode bit is 1 (it should be):
             unsigned char FifoCtrl;
@@ -68,12 +94,14 @@ static void imu_int1_handler()
             QMI8658_write_reg(QMI8658Register_Ctrl9, CTRL_CMD_ACK);
 
             // Read the data. If we over read, the undefined values return as -1.
-            uint16_t bytes_to_read = MIN(sizeof(data_buf), sample_count_words * sizeof(xyz_sample));
-            QMI8658_read_reg(FIFO_DATA, (unsigned char *) data_buf, bytes_to_read); 
+            uint16_t bytes_to_read = sample_count_words * sizeof(xyz_sample);
+            QMI8658_read_reg(FIFO_DATA, (unsigned char *) raw_data_buf, bytes_to_read); 
 
             // Clear the FIFO_rd_mode bit so that the IMU can start putting new readins into the FIFO.
             // If we do this too late, we can miss data.
             QMI8658_write_reg(FIFO_CTRL, FIFO_CTRL_VALUE);
+
+            process_data(sample_count_words / 3);
 
             break;
 
@@ -106,14 +134,19 @@ void gpio_irq_dispatcher(uint gpio, uint32_t events)
     }
 }
 
+
 void imu_initialize(void)
 {
+    // Prepare the biquad filter:
+    arm_biquad_cascade_df1_init_q15(&lpf_instance, BIQUAD_STAGES, lpf_coefficients, lpf_state, 0);
+
+
     QMI8658_init();
 
     struct QMI8658Config QMI8658_config;
     QMI8658_config.inputSelection = QMI8658_CTRL7_DISABLE_ALL;  // Initially, no inputs enabled.
     QMI8658_config.accRange = QMI8658AccRange_8g;
-    QMI8658_config.accOdr = QMI8658AccOdr_1000Hz;
+    QMI8658_config.accOdr = QMI8658AccOdr_1000Hz;               // Must match value of RAW_SAMPLE_RATE_HZ above.
     QMI8658_Config_apply(&QMI8658_config);
 
     // All inputs are disabled while we set things up.
@@ -137,7 +170,6 @@ void imu_initialize(void)
 
     // Enable the accelerometer input:
     QMI8658_enableSensors(QMI8658_CONFIG_ACC_ENABLE);
-
 }
 
 void imu_command(imu_commands cmd)
@@ -152,4 +184,26 @@ void imu_command_spinwait(void)
     // Spin lock waiting for the command to complete via INT1:
     while (pending_imu_command != NO_COMMAND)
         ;
+}
+
+
+static int16_t raw_accel_data[FIFO_MAX_SAMPLES];
+static int16_t lpf_accel_data[FIFO_MAX_SAMPLES];
+
+
+/** 
+ * Process newly arrived raw data in raw_data_buf.
+*/
+static void process_data(int accel_samples)
+{
+    // Extract the single acceleration reading we are interested in from the (x,y,z)
+    // values arriving from the IMU:
+    xyz_sample *pxyz = raw_data_buf;
+    for (int i = 0; i < accel_samples; i++, pxyz++)
+        raw_accel_data[i] = pxyz->accel_x;
+
+    // Apply a low pass filter to the data:
+    arm_biquad_cascade_df1_q15(&lpf_instance, raw_accel_data, lpf_accel_data, accel_samples);
+
+    int i = 42;
 }
