@@ -1,6 +1,7 @@
 #include "tuner.h"
 #include "core1_main.h"
 #include "LCD_1in28.h"
+#include "imu.h"
 #include <string.h>
 
 
@@ -43,17 +44,18 @@ void core1_main()
     float acc[3], gyro[3];
     unsigned int tim_count = 0;
 
+    char buf[32];
     while (1)
     {
-    //    QMI8658_read_xyz(acc, gyro, &tim_count);
+        sleep_ms(1000);
 
-        // This seems to overwrite pre-existing numbers in the buffer:
-        Paint_DrawNum(120, 90, acc[0], &Font16, 2, BLACK, WHITE);
-        Paint_DrawNum(120, 105, acc[1], &Font16, 2, BLACK, WHITE);
-        Paint_DrawNum(120, 120, acc[2], &Font16, 2, BLACK, WHITE);
+        snprintf(buf, sizeof(buf), "%d", imu_zc_count);
+        imu_zc_count = 0;
 
+        Paint_ClearWindows(80, 100, 160, 120, WHITE);
+
+        DrawCentredString_EN(100, buf, &Font24, fontWidth, BLACK, WHITE);        // Foreground, background colours.
         LCD_1IN28_Display(ImageBuffer);
-        DEV_Delay_ms(100);
     }
 
     // We never get here, but let's do the right thing:

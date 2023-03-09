@@ -6,6 +6,7 @@
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
+#include "pico/multicore.h"
 
 
 int main(void)
@@ -34,9 +35,9 @@ int main(void)
 
     multicore_launch_core1(core1_main);
 
-    // Twiddle our thumbs while the interrupt handle does the work.
-    while (1)
-        ;
+    // Twiddle our thumbs while the interrupt handler does the work.
+    while (1) {
+    }
 
 
     DEV_Module_Exit();

@@ -24,4 +24,6 @@ typedef struct {
     int16_t accel_z;
 } __attribute__((packed)) xyz_sample;
 
+extern volatile uint32_t imu_zc_count;
+
 #endif // IMU_H

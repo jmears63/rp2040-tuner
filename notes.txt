@@ -1,20 +1,26 @@
 TODO:
 
 
-From the IMU data sheet, I think X is axis we are interested in for side to side motions.
+Correlate the number of zcs with the pitch. Record some data somehow. Or 
+    write bits of waveform to the display.
+
+Optimum frame size that allows us to read the entire frame during one IMU sampling interval.
 
 Core 0:
-Spool the raw X data into a circular buffer.
-Run a LPF on that filter.
-When it crosses zero, send a message to core 1.
+DONE Spool the raw X data into a buffer.
+DONE Run a LPF on that filter.
+DONE Remove zero offset with a HPF.
+DONE Zero crossing detector that is noise immune:
+Send a message to core 1 when zero crossing is detected.
 
 Core 1:
+DONE Count the number of zero crossings in a second and display it.
+
+
 Initialize tables of 0/1 strobe bands. Initially just one table.
 Start a timer.
 Calculate phase based on the timer and reference pitch.
 Read the strobe bands based on that phase, copying them into a display buffer.
 Throw the display buffer at the LCD.
 
-
-https://www.dsprelated.com/freebooks/filters/Biquad_Software_Implementations.html
 
