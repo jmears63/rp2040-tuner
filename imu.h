@@ -11,19 +11,10 @@ typedef enum {
     NO_COMMAND = -1                     // Not a command.
 } imu_commands;
 
+#define FIFO_MAX_SAMPLES 256                // Maximum FIFO length based on the IMU data sheet.
+
 void imu_initialize(void);
 void imu_command(imu_commands cmd);
 void imu_command_spinwait(void);
-
-/**
- * Data structure to match the data read from the IMU.
-*/
-typedef struct {
-    int16_t accel_x;
-    int16_t accel_y;
-    int16_t accel_z;
-} __attribute__((packed)) xyz_sample;
-
-extern volatile uint32_t imu_zc_count;
 
 #endif // IMU_H

@@ -1,5 +1,5 @@
 #include "imu.h"
-#include "biquad.h"
+#include "processing.h"
 
 /*
     IMPORTANT
@@ -26,7 +26,6 @@ enum FIFO_REGISTERS {
 
 #define FIFO_HIGH_WATER_THRESHOLD 16        // The FIFO High Water Threshold in ODRs (so per 3 WORDs or xyz_sample structs).
 #define FIFO_CTRL_VALUE 0x0D                // 0000 1101:  FIFO mode, 128 samples (3 WORDS each, xyz_sample) total FIFO size.
-#define FIFO_MAX_SAMPLES 256                // Maximum FIFO length based on the data sheet.
 
 #define RAW_SAMPLE_RATE_HZ 1000
 
@@ -42,46 +41,6 @@ static void imu_int2_handler()
     imu_command(CTRL_CMD_REQ_FIFO);
 }
 
-static xyz_sample raw_data_buf[FIFO_MAX_SAMPLES];
-
-
-#define BIQUAD_STAGES 2
-static arm_biquad_casd_df1_inst_q15 lpf_instance;       // Low pass filter biquad instance.
-static q15_t lpf_state[BIQUAD_STAGES * 4];
-#define SCALING 2.0                                     // Adjust this value to accommodate the largest coefficient below.
-#define NORMALIZED(v) (v * 0x7FFF / SCALING)            // Scale v to a q15_t
-static const q15_t lpf_coefficients[] =
-{
-    // https://www.earlevel.com/main/2021/09/02/biquad-calculator-v3/
-    // CMSIS b10, 0, b11, b12, a11, a12. From the calculator above, swap A and B, and change the signs of the resulting As.
-
-    // 1000 Hz sample rate, 5Hz cutoff, Q=0.7071, high pass.
-    NORMALIZED(0.9780302754084559),
-    0,
-    NORMALIZED(-1.9560605508169118),
-    NORMALIZED(0.9780302754084559),
-    NORMALIZED(1.9555778328194147),
-    NORMALIZED(-0.9565432688144089),
-
-
-    // 1000 Hz sample rate, 70Hz cutoff, Q=0.7071, low pass.
-    NORMALIZED(0.036574754677828704),
-    0,
-    NORMALIZED(0.07314950935565741),
-    NORMALIZED(0.036574754677828704),
-    NORMALIZED(1.3908921947801067),
-    NORMALIZED(-0.5371912134914214)
-};
-
-static int16_t raw_accel_data[FIFO_MAX_SAMPLES];
-static int16_t lpf_accel_data[FIFO_MAX_SAMPLES];
-static int16_t circular_data[FIFO_MAX_SAMPLES * 10];
-
-static int n_negative, n_positive;              // Used for zero crossing detection.
-volatile uint32_t imu_zc_count = 0;
-
-
-static void process_data(int aceel_samples);
 
 /**
  * This handles INT1 events, which indicates one of two things:
@@ -118,7 +77,7 @@ static void imu_int1_handler()
             // If we do this too late, we can miss data.
             QMI8658_write_reg(FIFO_CTRL, FIFO_CTRL_VALUE);
 
-            process_data(sample_count_words / 3);
+            processing_process(sample_count_words / 3);
 
             break;
 
@@ -154,12 +113,7 @@ void gpio_irq_dispatcher(uint gpio, uint32_t events)
 
 void imu_initialize(void)
 {
-    // Prepare the biquad filter:
-    arm_biquad_cascade_df1_init_q15(&lpf_instance, BIQUAD_STAGES, lpf_coefficients, lpf_state, 0);
-
-    n_negative = 0;
-    n_positive = 0;
-    imu_zc_count = 0;
+    processing_initialize();
 
     QMI8658_init();
 
@@ -206,37 +160,3 @@ void imu_command_spinwait(void)
         ;
 }
 
-
-/** 
- * Process newly arrived raw data in raw_data_buf.
-*/
-static void process_data(int accel_samples)
-{
-    // Extract the single acceleration reading we are interested in from the (x,y,z)
-    // values arriving from the IMU:
-    xyz_sample *pxyz = raw_data_buf;
-    for (int i = 0; i < accel_samples; i++, pxyz++)
-        raw_accel_data[i] = pxyz->accel_x;
-
-    // Apply a low pass filter to the data:
-    arm_biquad_cascade_df1_q15(&lpf_instance, raw_accel_data, lpf_accel_data, accel_samples);
-
-    // Zero crossing detector:
-    for (int i = 0; i < accel_samples; i++)
-    {
-        // TODO: we should also check that the negative portion before the position portion had at least n points.
-        int16_t v = lpf_accel_data[i];
-        if (v < 0) {
-            n_negative++;
-            n_positive = 0;
-        }
-        else {
-            n_positive++;
-            n_negative = 0;
-        }
-        if (n_positive >= 3) {
-            // Yes, this seems to be rising edge passing through zero.
-            imu_zc_count++;
-        }
-    }
-}

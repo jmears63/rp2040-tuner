@@ -19,7 +19,7 @@ include_directories(./lib/LCD)
 include_directories(./lib/QMI8658)
 
 add_executable(tuner
-  tuner.c imu.c core1_main.c biquad.c
+  tuner.c imu.c core1_main.c biquad.c processing.c
 )
 
 # pico_enable_stdio_usb(tuner 1)

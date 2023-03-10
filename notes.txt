@@ -1,8 +1,10 @@
 TODO:
 
+Write the data to a longer buffer that wraps.
 
 Correlate the number of zcs with the pitch. Record some data somehow. Or 
     write bits of waveform to the display.
+
 
 Optimum frame size that allows us to read the entire frame during one IMU sampling interval.
 

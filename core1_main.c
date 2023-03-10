@@ -2,6 +2,7 @@
 #include "core1_main.h"
 #include "LCD_1in28.h"
 #include "imu.h"
+#include "processing.h"
 #include <string.h>
 
 
