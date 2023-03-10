@@ -1,6 +1,25 @@
 TODO:
 
-Write the data to a longer buffer that wraps.
+Debug the zero crossing code - does it really work? Then why can't it measure frequency?
+
+
+How fast can we write data to the LCD?
+    LCD_1IN28_Display is about 35 ms, ie 28 per second. That blts the full 240x240 using
+        bit banging and tight loops. Possibly it could be made asynchronous to get some
+        CPU cycles back. It seems to write 2 bytes per pixel x 240 regardless of colour
+        depth, so a 25% speedup is possible with 4 bit colour, in theory.
+    Increasing SPI to 62.5 MHz halves the time to blt the screen to 18ms. Hurrah.
+        Can then do SPI asynchronously? Though 62.5Mhz is close to CPU speed so maybe not much to gain.
+    Include filling a rectangle 80, 100, 160, 120 with the GUI library makes it 42 ms screen.
+    So it boils down to how quickly we can populate the screen buffer.
+
+
+
+Understand the data. It looks jumbled.
+    Why different numbers of samples per interrupt? ~16 and ~40.
+    Thought: acceleration is proportional to frequency. So harmonics dominate the 
+        data.
+    OK, live with it. Project the audio signal onto the display instead of strobing a striped disk.
 
 Correlate the number of zcs with the pitch. Record some data somehow. Or 
     write bits of waveform to the display.
@@ -10,6 +29,7 @@ Optimum frame size that allows us to read the entire frame during one IMU sampli
 
 Core 0:
 DONE Spool the raw X data into a buffer.
+Probably we need some AGC here.
 DONE Run a LPF on that filter.
 DONE Remove zero offset with a HPF.
 DONE Zero crossing detector that is noise immune:

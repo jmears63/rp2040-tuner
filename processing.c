@@ -12,6 +12,11 @@ static int16_t raw_accel_data[FIFO_MAX_SAMPLES];
 static int16_t lpf_accel_data[FIFO_MAX_SAMPLES];
 static int16_t circular_data[FIFO_MAX_SAMPLES * 10];
 
+#define DEBUG_DATA_LEN 256
+static int16_t debug_data[DEBUG_DATA_LEN];
+static int debug_index = 0;     // Next free data location index.
+
+
 static int n_negative, n_positive;              // Used for zero crossing detection.
 
 #define BIQUAD_STAGES 2
@@ -25,6 +30,7 @@ static const q15_t lpf_coefficients[] =
     // CMSIS b10, 0, b11, b12, a11, a12. From the calculator above, swap A and B, and change the signs of the resulting As.
 
     // 1000 Hz sample rate, 5Hz cutoff, Q=0.7071, high pass.
+    // This removes DC (ie gravity).
     NORMALIZED(0.9780302754084559),
     0,
     NORMALIZED(-1.9560605508169118),
@@ -32,16 +38,54 @@ static const q15_t lpf_coefficients[] =
     NORMALIZED(1.9555778328194147),
     NORMALIZED(-0.9565432688144089),
 
+    // 1000 Hz sample rate, 35Hz cutoff, Q=0.7071, low pass.
+    // Use a low cutoff to get maximum slope in the region of the note.
+    NORMALIZED(0.010432400000959617),
+    0,
+    NORMALIZED(0.020864800001919235),
+    NORMALIZED(0.010432400000959617),
+    NORMALIZED(1.6909942097141335),
+    NORMALIZED(-0.7327238097179718)
 
+#if 0
     // 1000 Hz sample rate, 70Hz cutoff, Q=0.7071, low pass.
+    ,
     NORMALIZED(0.036574754677828704),
     0,
     NORMALIZED(0.07314950935565741),
     NORMALIZED(0.036574754677828704),
     NORMALIZED(1.3908921947801067),
-    NORMALIZED(-0.5371912134914214)
+    NORMALIZED(-0.5371912134914214),
+#endif
 };
 
+
+static void add_to_debug_data(int16_t *pData, int count)
+{
+    // Append the data supplied to the debug data buffer, wrapping as required.
+
+    count = MIN(count, DEBUG_DATA_LEN);     // Paranoia.
+    
+    // Potentially we copy in two parts, to allow for wrapping.
+
+    int part1_count = MIN(count, DEBUG_DATA_LEN - debug_index);
+    int16_t *limit = debug_data + debug_index + part1_count;
+    for (int16_t *pDest = debug_data + debug_index; pDest < limit; pDest++, pData++)
+        *pDest = *pData;
+    debug_index += part1_count;
+    if (debug_index == DEBUG_DATA_LEN)
+        debug_index = 0;    // Wrap if required.
+
+    if (count > part1_count) {
+        // We only get here if we have just wrapped, so some assumptions can be made.
+        int part2_count = count - part1_count;
+        limit = debug_data + part2_count;
+        for (int16_t *pDest = debug_data; pDest < limit; pDest++, pData++)
+            *pDest = *pData;
+        debug_index += part2_count;
+    }
+
+}
 
 void processing_initialize(void)
 {
@@ -51,6 +95,7 @@ void processing_initialize(void)
     n_negative = 0;
     n_positive = 0;
     imu_zc_count = 0;
+    debug_index = 0;
 }
 
 /** 
@@ -85,4 +130,6 @@ void processing_process(int accel_samples)
             imu_zc_count++;
         }
     }
+
+    add_to_debug_data(lpf_accel_data, accel_samples);
 }

@@ -195,7 +195,8 @@ uint8_t DEV_Module_Init(void)
     pwm_set_enabled(slice_num, true);
 
     // SPI Config
-    spi_init(SPI_PORT, 40000 * 1000);
+    //volatile uint baud = spi_init(SPI_PORT, 40000 * 1000);
+    volatile uint baud = spi_init(SPI_PORT, 70 * 1000000);      // JM
     gpio_set_function(LCD_CLK_PIN, GPIO_FUNC_SPI);
     gpio_set_function(LCD_MOSI_PIN, GPIO_FUNC_SPI);
     // I2C Config

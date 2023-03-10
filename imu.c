@@ -6,7 +6,7 @@
     
     The IMU chip behaves like a QMI865A (not a QMI865C as specified by Waveshare), documented here:
         https://www.qstcorp.com/upload/pdf/202301/13-52-25%20QMI8658A%20Datasheet%20Rev%20A.pdf
-    The protocol for reading FIFO data is somewhat different, and works.
+    The protocol for reading FIFO data is different. The C instructions don't work with an A.
 */
 
 
@@ -24,10 +24,8 @@ enum FIFO_REGISTERS {
     FIFO_DATA = 23
 };
 
-#define FIFO_HIGH_WATER_THRESHOLD 16        // The FIFO High Water Threshold in ODRs (so per 3 WORDs or xyz_sample structs).
+#define FIFO_HIGH_WATER_THRESHOLD 50        // The FIFO High Water Threshold in ODRs (so per 3 WORDs or xyz_sample structs).
 #define FIFO_CTRL_VALUE 0x0D                // 0000 1101:  FIFO mode, 128 samples (3 WORDS each, xyz_sample) total FIFO size.
-
-#define RAW_SAMPLE_RATE_HZ 1000
 
 static volatile imu_commands pending_imu_command = NO_COMMAND;
 
@@ -120,7 +118,7 @@ void imu_initialize(void)
     struct QMI8658Config QMI8658_config;
     QMI8658_config.inputSelection = QMI8658_CTRL7_DISABLE_ALL;  // Initially, no inputs enabled.
     QMI8658_config.accRange = QMI8658AccRange_8g;
-    QMI8658_config.accOdr = QMI8658AccOdr_1000Hz;               // Must match value of RAW_SAMPLE_RATE_HZ above.
+    QMI8658_config.accOdr = QMI8658AccOdr_1000Hz;
     QMI8658_Config_apply(&QMI8658_config);
 
     // All inputs are disabled while we set things up.

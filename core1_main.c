@@ -42,9 +42,21 @@ void core1_main()
 
     LCD_1IN28_Display(ImageBuffer);
 
+    volatile clock_t elapsed = 0;
+
+    while (1)
+    {
+        clock_t t1 = time_us_64();
+        Paint_ClearWindows(80, 100, 160, 120, RED);
+        for (int i = 0; i < 100; i++) {
+            LCD_1IN28_Display(ImageBuffer);
+        }
+        clock_t t2 = time_us_64();
+        elapsed = t2 - t1;
+    }
+
     float acc[3], gyro[3];
     unsigned int tim_count = 0;
-
     char buf[32];
     while (1)
     {
